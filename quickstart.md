@@ -1,96 +1,154 @@
-# Quick Start — Compliance Message Trace Analyzer
+# Quick Start
 
-Get an interactive compliance report from an Exchange Online Message Trace CSV in a few minutes.
+Use this guide to get `MDOThreatPolicyAnalyzer.ps1` running quickly and generate your first Microsoft Defender for Office 365 assessment report.
 
-> Full details: [readme.md](readme.md) · [instructions.md](instructions.md)
+## Prerequisites Checklist
 
----
+Before you begin, make sure you have:
 
-## 1. Prerequisites (1 minute)
+- [ ] Windows PowerShell 5.1 or later
+- [ ] Access to the `MDOThreatPolicyAnalyzer.ps1` script
+- [ ] Internet access to install PowerShell modules if needed
+- [ ] The `ExchangeOnlineManagement` module installed, or permission to install it for your current user
+- [ ] An account with permission to read Exchange Online and Defender for Office 365 policy settings
 
-- **Windows PowerShell 5.1** (Windows).
-- A **Message Trace CSV** exported from Exchange Online with the **`custom_data`** column (choose a detailed/extended trace).
-- *(Only for friendly names)* the Exchange Online module:
+## Step-by-Step
 
-  ```powershell
-  Install-Module ExchangeOnlineManagement -Scope CurrentUser
-  ```
+### 1. Download the script
 
-## 2. Allow the script to run
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-```
-
-## 3. Run it
-
-Pick the fastest path for your needs:
-
-**A. Easiest — pick the file, resolve names interactively**
+Download or clone the repository to a local folder, then open PowerShell in that folder.
 
 ```powershell
-.\ComplianceMessageTraceAnalyzer.ps1
+cd C:\Path\To\MDOAnalyzer
 ```
 
-Answer the prompts (connect? → `Y`, then your admin UPN).
+### 2. Run the script
 
-**B. Point at the CSV and provide your UPN (no prompts)**
+For a first run, use the default behavior:
 
 ```powershell
-.\ComplianceMessageTraceAnalyzer.ps1 -CsvPath "C:\Reports\MessageTrace.csv" -AdminUPN "admin@contoso.onmicrosoft.com"
+.\MDOThreatPolicyAnalyzer.ps1
 ```
 
-**C. Offline — parse only, no sign-in**
+What happens next:
+
+1. The script checks for the `ExchangeOnlineManagement` module.
+2. It connects to Exchange Online.
+3. It connects to Security & Compliance PowerShell.
+4. It collects MDO policy settings.
+5. It compares them against Microsoft's recommended Standard and Strict baselines.
+6. It builds an HTML report and optional CSV exports.
+7. It opens the HTML report in your default browser unless you tell it not to.
+
+### 3. View the report
+
+By default, output is saved to:
+
+```text
+.\Output
+```
+
+Open the generated HTML report if it did not open automatically:
+
+```text
+MDOThreatPolicyAnalyzer-Report-<timestamp>.html
+```
+
+## Common Scenarios
+
+### Basic run
 
 ```powershell
-.\ComplianceMessageTraceAnalyzer.ps1 -CsvPath "C:\Reports\MessageTrace.csv" -SkipDlpLookup
+.\MDOThreatPolicyAnalyzer.ps1
 ```
 
-## 4. Open the report
-
-When prompted **"Would you like to open the report now?"**, press `Y`.
-The HTML opens in your browser next to the CSV (or at your `-OutputPath`).
-
-## 5. Explore
-
-The report has five tabs:
-
-| Tab | Shows |
-|-----|-------|
-| **Data Loss Prevention** | DLP rule matches, modes, actions |
-| **Sensitive Information Types** | SIT detections + confidence |
-| **Server Side Auto Labeling** | Auto-label rule matches |
-| **Sensitivity Labels** | Applied labels + protections |
-| **Message View** | Per-message timeline of all events |
-
-On any tab you can **search**, **filter**, **sort**, **click summary cards to filter**, **expand rows for full detail**, and **export CSV**.
-
-## What you get
-
-Next to your CSV:
-
-- `MessageTrace.html` — the interactive report
-- `MessageTrace_ExecutionRuleIds.csv`, `_SSAMRuleIds.csv`, `_DCIDs.csv`, `_LabelIds.csv` — extracted IDs (when found)
-
-## Cleanup (important)
-
-The outputs are **confidential**. When done:
+### Use a specific admin sign-in hint
 
 ```powershell
-Disconnect-ExchangeOnline -Confirm:$false
+.\MDOThreatPolicyAnalyzer.ps1 -AdminUPN admin@contoso.com
 ```
 
-Delete the report and companion CSVs per your retention policy.
+### Generate the report without opening a browser
 
-## Common quick fixes
+```powershell
+.\MDOThreatPolicyAnalyzer.ps1 -SkipBrowserOpen
+```
 
-| Problem | Fix |
-|---------|-----|
-| Empty compliance tabs | Re-export the trace as detailed/extended so `custom_data` is included. |
-| Names show "Unknown" | Re-run with a valid `-AdminUPN` (don't use `-SkipDlpLookup`). |
-| 0 records / garbled text | Add `-Verbose` and re-export the CSV from the portal. |
-| Script won't run | `Set-ExecutionPolicy -Scope Process RemoteSigned`. |
+### Save output to a custom location
 
----
+```powershell
+.\MDOThreatPolicyAnalyzer.ps1 -OutputPath "C:\Reports\MDO"
+```
 
-Need more? See [instructions.md](instructions.md) for a full walkthrough and reference tables.
+### Install the module automatically if it is missing
+
+```powershell
+.\MDOThreatPolicyAnalyzer.ps1 -InstallModuleIfMissing
+```
+
+### Quiet run with a custom output path
+
+```powershell
+.\MDOThreatPolicyAnalyzer.ps1 -OutputPath "C:\Reports\MDO" -Quiet -SkipBrowserOpen
+```
+
+### Unattended run with app-only certificate authentication
+
+For scheduled tasks or pipelines with no interactive sign-in, use app-only certificate authentication. All three parameters are required together:
+
+```powershell
+.\MDOThreatPolicyAnalyzer.ps1 `
+  -AppId "00000000-0000-0000-0000-000000000000" `
+  -Organization "contoso.onmicrosoft.com" `
+  -CertificateThumbprint "AABBCCDDEEFF00112233445566778899AABBCCDD" `
+  -OutputPath "C:\Reports\MDO" -Quiet -SkipBrowserOpen
+```
+
+## Troubleshooting
+
+### The ExchangeOnlineManagement module is not installed
+
+**Symptom:** The script stops before connecting.
+
+**Fix:** Install the module manually, or rerun with automatic installation enabled.
+
+```powershell
+Install-Module ExchangeOnlineManagement -Scope CurrentUser
+```
+
+or
+
+```powershell
+.\MDOThreatPolicyAnalyzer.ps1 -InstallModuleIfMissing
+```
+
+### Authentication fails
+
+**Symptom:** Sign-in does not complete, or the connection fails.
+
+**Things to try:**
+
+- Confirm you can sign in to Exchange Online PowerShell manually
+- Use `-AdminUPN` to prefill the account you want to use
+- Make sure MFA or Conditional Access requirements can be satisfied interactively
+- Update the `ExchangeOnlineManagement` module if sign-in behavior seems outdated
+
+### Permissions are insufficient
+
+**Symptom:** The script runs, but some areas return no data or warnings.
+
+**Things to check:**
+
+- Your admin account can read Defender for Office 365 and Exchange Online policy settings
+- You have access to Security & Compliance PowerShell
+- Your role assignments allow read access to the policy cmdlets the script uses
+
+### The report does not open automatically
+
+**Symptom:** The run finishes, but no browser window appears.
+
+**Fix:** Open the report manually from the output folder. You can also use `-SkipBrowserOpen` intentionally for server or remote sessions.
+
+## Next Step
+
+For more detail, see [instructions.md](instructions.md) and the main [README.md](README.md).
